@@ -1,0 +1,102 @@
+local function installScript()
+    -- Check if we're running from Delta/executor
+    if not is_synapse_function then
+        -- Create the script in StarterPlayerScripts
+        local container = game:GetService("StarterPlayer"):FindFirstChild("StarterPlayerScripts")
+        if not container then
+            container = Instance.new("Folder")
+            container.Name = "StarterPlayerScripts"
+            container.Parent = game:GetService("StarterPlayer")
+        end
+
+        -- Remove existing copy if it exists
+        local existing = container:FindFirstChild("MovingPartController")
+        if existing then
+            existing:Destroy()
+        end
+
+        -- Create new script
+        local newScript = Instance.new("Script")
+        newScript.Name = "MovingPartController"
+        newScript.Source = [[
+            -- Script content will be placed here
+            local Players = game:GetService("Players")
+            local RunService = game:GetService("RunService")
+            local player = Players.LocalPlayer
+
+            -- Wait for GUI (must be in StarterGui)
+            local gui = player:WaitForChild("PlayerGui"):WaitForChild("MovingPartGUI")
+            local part = workspace:WaitForChild("MovingPart")
+            local speed = 0
+
+            -- GUI Elements
+            local textBox = gui:WaitForChild("SpeedTextBox")
+            local textLabel = gui:WaitForChild("SpeedLabel")
+
+            -- Handle speed input
+            textBox.FocusLost:Connect(function(enterPressed)
+                if enterPressed then
+                    local newSpeed = tonumber(textBox.Text)
+                    if newSpeed then
+                        speed = newSpeed
+                        textLabel.Text = "Speed: " .. speed
+                        textBox.Text = ""
+                    else
+                        textBox.Text = "Invalid number!"
+                        task.delay(1, function() textBox.Text = "" end)
+                    end
+                end
+            end)
+
+            -- Movement system
+            RunService.Heartbeat:Connect(function(dt)
+                part.Position = part.Position + Vector3.new(speed * dt, 0, 0)
+            end)
+        ]]
+
+        newScript.Parent = container
+        print("Successfully installed script to StarterPlayerScripts!")
+        return
+    end
+end
+
+-- Try to install the script
+local success, err = pcall(installScript)
+if not success then
+    warn("Installation failed:", err)
+end
+
+-- If we're already running from StarterPlayerScripts, run the main logic
+if script:IsDescendantOf(game:GetService("StarterPlayer")) then
+    -- Main script logic here (same as above)
+    local Players = game:GetService("Players")
+    local RunService = game:GetService("RunService")
+    local player = Players.LocalPlayer
+
+    -- Wait for GUI
+    local gui = player:WaitForChild("PlayerGui"):WaitForChild("MovingPartGUI")
+    local part = workspace:WaitForChild("MovingPart")
+    local speed = 0
+
+    -- GUI Elements
+    local textBox = gui:WaitForChild("SpeedTextBox")
+    local textLabel = gui:WaitForChild("SpeedLabel")
+
+    textBox.FocusLost:Connect(function(enterPressed)
+        if enterPressed then
+            local newSpeed = tonumber(textBox.Text)
+            if newSpeed then
+                speed = newSpeed
+                textLabel.Text = "Speed: " .. speed
+                textBox.Text = ""
+            else
+                textBox.Text = "Invalid number!"
+                task.delay(1, function() textBox.Text = "" end)
+            end
+        end
+    end)
+
+    RunService.Heartbeat:Connect(function(dt)
+        part.Position = part.Position + Vector3.new(speed * dt, 0, 0)
+    end)
+end
