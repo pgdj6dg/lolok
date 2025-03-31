@@ -1,0 +1,67 @@
+-- Server script in ServerScriptService
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local KickEvent = Instance.new("RemoteEvent")
+KickEvent.Name = "KickBall"
+KickEvent.Parent = ReplicatedStorage
+
+local PossessEvent = Instance.new("RemoteEvent")
+PossessEvent.Name = "PossessBall"
+PossessEvent.Parent = ReplicatedStorage
+
+local function createBall()
+    local ball = Instance.new("Part")
+    ball.Name = "PossessableBall"
+    ball.Shape = Enum.PartType.Ball
+    ball.Size = Vector3.new(4, 4, 4)
+    ball.BrickColor = BrickColor.new("Bright blue")
+    ball.Material = Enum.Material.Neon
+    ball.CanCollide = true
+    ball.Elasticity = 0.5
+    return ball
+end
+
+KickEvent.OnServerEvent:Connect(function(player, direction, speed)
+    -- Create and kick ball
+    local ball = createBall()
+    ball.Position = player.Character.HumanoidRootPart.Position + Vector3.new(0, 2, 0)
+    ball.Parent = workspace
+    
+    local bodyVelocity = Instance.new("BodyVelocity")
+    bodyVelocity.Velocity = direction * speed
+    bodyVelocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+    bodyVelocity.Parent = ball
+    game:GetService("Debris"):AddItem(bodyVelocity, 0.1)
+    
+    -- Store reference to last kicked ball
+    if player:FindFirstChild("CurrentBall") then
+        player.CurrentBall.Value:Destroy()
+    end
+    local ballRef = Instance.new("ObjectValue")
+    ballRef.Name = "CurrentBall"
+    ballRef.Value = ball
+    ballRef.Parent = player
+end)
+
+PossessEvent.OnServerEvent:Connect(function(player)
+    local character = player.Character
+    local humanoid = character:FindFirstChild("Humanoid")
+    local ball = player:FindFirstChild("CurrentBall") and player.CurrentBall.Value
+    
+    if ball and ball.Parent then
+        if humanoid.Sit then
+            -- Exit ball
+            humanoid.Sit = false
+            character:MoveTo(ball.Position + Vector3.new(0, 5, 0))
+        else
+            -- Possess ball
+            local seat = Instance.new("Seat")
+            seat.Anchored = false
+            seat.CFrame = ball.CFrame + Vector3.new(0, ball.Size.Y/2, 0)
+            seat.Parent = ball
+            humanoid.Sit = true
+            seat:Sit(humanoid)
+        end
+    end
+end)
