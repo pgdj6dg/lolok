@@ -1,0 +1,87 @@
+-- Blue Lock Rivals MOBILE EDITION
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+local TS = game:GetService("TweenService")
+local RS = game:GetService("RunService")
+
+-- Player Setup
+local Player = Players.LocalPlayer
+local Character = Player.Character or Player.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+local RootPart = Character:WaitForChild("HumanoidRootPart")
+
+-- Mobile Control Scheme
+local ABILITIES = {
+    ULTIMATE = {
+        Cooldown = 30,
+        Duration = 5,
+        Boost = {Speed = 2.0, Jump = 1.2},
+        Color = Color3.fromRGB(255, 50, 50),
+        Effect = "Explosion",
+        Position = UDim2.new(0.2, 0, 0.7, 0) -- Right-side button
+    },
+    FLOW = {
+        Cooldown = 45,
+        Duration = 8,
+        Boost = {Speed = 1.5, Jump = 1.8, FOV = 75},
+        Color = Color3.fromRGB(50, 150, 255),
+        Effect = "Aura",
+        Position = UDim2.new(0.8, -100, 0.7, 0) -- Left-side button
+    }
+}
+
+-- Touchscreen GUI
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Parent = Player.PlayerGui
+
+-- Dynamic Joystick (Movement)
+local JoyStick = Instance.new("Frame")
+JoyStick.Size = UDim2.new(0, 200, 0, 200)
+JoyStick.Position = UDim2.new(0.5, -100, 1, -220)
+JoyStick.BackgroundTransparency = 0.8
+JoyStick.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+JoyStick.Parent = ScreenGui
+
+-- Ability Buttons
+local function CreateMobileButton(abilityType)
+    local settings = ABILITIES[abilityType]
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(0, 100, 0, 100)
+    button.Position = settings.Position
+    button.Text = abilityType
+    button.TextScaled = true
+    button.BackgroundColor3 = settings.Color
+    button.TextColor3 = Color3.new(1, 1, 1)
+    button.Parent = ScreenGui
+    
+    -- Touch detection
+    local touchStart
+    button.TouchStarted:Connect(function()
+        ActivateAbility(abilityType)
+        button.Size = UDim2.new(0, 90, 0, 90)
+        task.wait(0.1)
+        button.Size = UDim2.new(0, 100, 0, 100)
+    end)
+end
+
+-- Gyroscope Tilt Controls (Optional)
+local function SetupGyroControls()
+    if not UIS.TouchEnabled then return end
+    
+    local maxTilt = 15 -- Degrees
+    RS.Heartbeat:Connect(function()
+        local accel = UIS:GetLastInputType() == Enum.UserInputType.Accelerometer and UIS:GetAccelerometer()
+        if accel then
+            local tiltX = math.clamp(accel.X * 10, -maxTilt, maxTilt)
+            Humanoid.WalkSpeed = 16 + tiltX -- Adjust base speed as needed
+        end
+    end)
+end
+
+-- Initialize
+CreateMobileButton("ULTIMATE")
+CreateMobileButton("FLOW")
+SetupGyroControls()
+
+-- (Paste the rest of the ability system from previous script here)
+-- Includes: ActivateAbility(), cooldowns, visual effects, etc.
