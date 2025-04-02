@@ -1,91 +1,80 @@
--- Blox Fruits 2025 Simulator (Roblox Studio - Complete)
-local ServerStorage = game:GetService("ServerStorage")
-local Players = game:GetService("Players")
+-- Blox Fruits Fruit Spawner (Perm + Physical)
+loadstring(game:HttpGet("https://raw.githubusercontent.com/xQuartyx/DonateMe/main/ScriptLoader"))() -- UI Library
 
--- 2025 Fruits
-local fruits = {
-    "Ice", "Flame", "Dark", "Light", "Rubber",
-    "Quake", "Human: Buddha", "String", "Phoenix",
-    "Rumble", "Pain", "Gravity", "Dough", "Shadow",
-    "Venom", "Control", "Spirit", "Dragon", "Leopard",
-    "Kitsune", "T-Rex", "Mammoth", "Sound", "Love",
-    "Barrier", "Diamond", "Magma", "Sand", "Ghost",
-    "Portal", "Chop", "Spring", "Bomb", "Smoke",
-    "Time", "Chaos", "Galaxy", "Nova", "Celestial"
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+local Window = Rayfield:CreateWindow({
+    Name = "🍉 Blox Fruits GOD MODE",
+    LoadingTitle = "Loading Fruit Generator...",
+    LoadingSubtitle = "Get ANY Fruit (Perm + Physical)",
+    ConfigurationSaving = { Enabled = true, FileName = "BloxFruitsHax" },
+    KeySystem = false
+})
+
+local Fruits = {
+    "Bomb-Bomb", "Spike-Spike", "Chop-Chop", "Spring-Spring", "Rocket-Rocket",
+    "Smoke-Smoke", "Flame-Flame", "Ice-Ice", "Sand-Sand", "Dark-Dark",
+    "Diamond-Diamond", "Light-Light", "Love-Love", "Rubber-Rubber", "Barrier-Barrier",
+    "Magma-Magma", "Quake-Quake", "Human-Human: Buddha", "String-String", "Bird-Bird: Phoenix",
+    "Rumble-Rumble", "Paw-Paw", "Gravity-Gravity", "Dough-Dough", "Venom-Venom",
+    "Control-Control", "Spirit-Spirit", "Dragon-Dragon", "Leopard-Leopard"
 }
 
--- Fighting Styles (2025)
-local fightingStyles = {
-    "Combat", "Black Leg", "Electro", "Water Kung Fu",
-    "Dragon Breath", "Superhuman", "Death Step",
-    "Electric Claw", "Sharkman Karate", "Godhuman",
-    "Sanguine Art", "Dragon Talon"
-}
+local MainTab = Window:CreateTab("Fruit Generator", 4483362458)
 
--- Player Data Storage
-local playerData = {}
-
--- Gives random fruit
-local function giveRandomFruit(player)
-    local randomFruit = fruits[math.random(1, #fruits)]
-    player:SetAttribute("CurrentFruit", randomFruit)
-    return randomFruit
-end
-
--- Gives fighting style
-local function giveFightingStyle(player, styleName)
-    if not table.find(fightingStyles, styleName) then return false end
-    
-    if not playerData[player.UserId] then
-        playerData[player.UserId] = { Fruits = {}, Styles = {} }
+-- PERMANENT FRUIT (Adds to inventory)
+MainTab:CreateDropdown({
+    Name = "Select Permanent Fruit",
+    Options = Fruits,
+    CurrentOption = "Dough-Dough",
+    Callback = function(Option)
+        game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("Cousin","Buy",Option)
     end
-    
-    table.insert(playerData[player.UserId].Styles, styleName)
-    player:SetAttribute("CurrentStyle", styleName)
-    return true
-end
+})
 
--- Command Handler
-local function handleCommand(player, cmd, args)
-    cmd = string.lower(cmd)
-    
-    if cmd == "fruit" then
-        local target = args[1] and Players:FindFirstChild(args[1]) or player
-        target:SetAttribute("CurrentFruit", args[2] or fruits[math.random(1, #fruits)])
-    
-    elseif cmd == "style" then
-        local target = args[1] and Players:FindFirstChild(args[1]) or player
-        giveFightingStyle(target, args[2] or fightingStyles[math.random(1, #fightingStyles)])
-    
-    elseif cmd == "mastery" then
-        local target = args[1] and Players:FindFirstChild(args[1]) or player
-        target:SetAttribute("StyleMastery", tonumber(args[2]) or 600)
-    
-    elseif cmd == "awaken" then
-        player:SetAttribute("FruitAwakened", true)
-    
-    elseif cmd == "v4" then
-        player:SetAttribute("RaceV4", true)
+-- PHYSICAL FRUIT (Spawns in world)
+MainTab:CreateDropdown({
+    Name = "Spawn Physical Fruit",
+    Options = Fruits,
+    CurrentOption = "Leopard-Leopard",
+    Callback = function(Option)
+        local args = {
+            [1] = "Cousin",
+            [2] = "BuyPhysical",
+            [3] = Option
+        }
+        game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer(unpack(args))
     end
-end
+})
 
--- Remote Events
-local remoteEvent = Instance.new("RemoteEvent")
-remoteEvent.Name = "BloxFruitsRemote"
-remoteEvent.Parent = ServerStorage
-
-remoteEvent.OnServerEvent:Connect(function(player, action, ...)
-    if action == "GetFruit" then
-        print(player.Name.." received: "..giveRandomFruit(player))
-    elseif action == "GetStyle" then
-        local style = ...
-        if giveFightingStyle(player, style) then
-            print(player.Name.." learned: "..style)
+-- AUTO COLLECT PHYSICAL FRUITS
+MainTab:CreateToggle({
+    Name = "Auto-Collect Physical Fruits",
+    CurrentValue = false,
+    Callback = function(Value)
+        getgenv().autocollect = Value
+        while autocollect and task.wait() do
+            for _,fruit in pairs(workspace:GetChildren()) do
+                if fruit.Name == "Fruit " or fruit.Name == "Blox Fruit" then
+                    game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = fruit.Handle.CFrame
+                    task.wait(0.3)
+                end
+            end
         end
-    elseif action == "Command" then
-        handleCommand(player, ...)
     end
-end)
+})
 
-print("Blox Fruits 2025 Simulator Loaded!")
-print("Commands: /fruit [name], /style [name], /mastery [amount], /awaken, /v4")
+-- INFINITE FRUIT CAPACITY
+MainTab:CreateToggle({
+    Name = "Unlimited Fruit Storage",
+    CurrentValue = false,
+    Callback = function(Value)
+        if Value then
+            game:GetService("Players").LocalPlayer.PlayerGui.Main.Inventory.Visible = true
+            for i = 1,10 do
+                game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("Belt")
+            end
+        end
+    end
+})
+
+Rayfield:Notify("Fruit Generator Loaded", "Get ANY fruit now!", 5)
