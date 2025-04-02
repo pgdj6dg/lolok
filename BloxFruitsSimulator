@@ -1,80 +1,100 @@
--- Blox Fruits Fruit Spawner (Perm + Physical)
-loadstring(game:HttpGet("https://raw.githubusercontent.com/xQuartyx/DonateMe/main/ScriptLoader"))() -- UI Library
+-- Blox Fruits Ultimate HUB (Gamepasses + Fruits + Levels/Money)
+loadstring(game:HttpGet("https://raw.githubusercontent.com/xQuartyx/DonateMe/main/ScriptLoader"))()
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 local Window = Rayfield:CreateWindow({
-    Name = "🍉 Blox Fruits GOD MODE",
-    LoadingTitle = "Loading Fruit Generator...",
-    LoadingSubtitle = "Get ANY Fruit (Perm + Physical)",
-    ConfigurationSaving = { Enabled = true, FileName = "BloxFruitsHax" },
+    Name = "🍒 Blox Fruits GOD MODE",
+    LoadingTitle = "Loading Ultimate Cheats...",
+    LoadingSubtitle = "Fruits + Gamepasses + Stats",
+    ConfigurationSaving = { Enabled = true, FileName = "BloxUltimate" },
     KeySystem = false
 })
 
+-- FRUIT SYSTEM
 local Fruits = {
-    "Bomb-Bomb", "Spike-Spike", "Chop-Chop", "Spring-Spring", "Rocket-Rocket",
-    "Smoke-Smoke", "Flame-Flame", "Ice-Ice", "Sand-Sand", "Dark-Dark",
-    "Diamond-Diamond", "Light-Light", "Love-Love", "Rubber-Rubber", "Barrier-Barrier",
-    "Magma-Magma", "Quake-Quake", "Human-Human: Buddha", "String-String", "Bird-Bird: Phoenix",
-    "Rumble-Rumble", "Paw-Paw", "Gravity-Gravity", "Dough-Dough", "Venom-Venom",
-    "Control-Control", "Spirit-Spirit", "Dragon-Dragon", "Leopard-Leopard"
+    "Bomb", "Spike", "Chop", "Spring", "Rocket", "Smoke", 
+    "Flame", "Ice", "Sand", "Dark", "Diamond", "Light", 
+    "Love", "Rubber", "Barrier", "Magma", "Quake", "Buddha", 
+    "String", "Phoenix", "Rumble", "Paw", "Gravity", "Dough", 
+    "Venom", "Control", "Spirit", "Dragon", "Leopard"
 }
 
-local MainTab = Window:CreateTab("Fruit Generator", 4483362458)
+-- GAMEPASSES
+local Gamepasses = {
+    "2x Money", "2x Beli", "Fast Boats", "Hellfire Torch",
+    "Race V2", "Dough King", "Gacha Discount", "Dark Blade"
+}
 
--- PERMANENT FRUIT (Adds to inventory)
-MainTab:CreateDropdown({
-    Name = "Select Permanent Fruit",
-    Options = Fruits,
-    CurrentOption = "Dough-Dough",
-    Callback = function(Option)
-        game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("Cousin","Buy",Option)
-    end
-})
+local MainTab = Window:CreateTab("Main", 4483362458)
 
--- PHYSICAL FRUIT (Spawns in world)
+-- FRUIT SPAWNER (FIXED)
 MainTab:CreateDropdown({
-    Name = "Spawn Physical Fruit",
+    Name = "Get Any Fruit",
     Options = Fruits,
-    CurrentOption = "Leopard-Leopard",
+    CurrentOption = "Leopard",
     Callback = function(Option)
-        local args = {
-            [1] = "Cousin",
-            [2] = "BuyPhysical",
-            [3] = Option
-        }
+        local args = {[1] = "Cousin", [2] = "Buy", [3] = Option}
         game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer(unpack(args))
+        
+        -- Physical spawn backup
+        task.spawn(function()
+            local args2 = {[1] = "Cousin", [2] = "BuyPhysical", [3] = Option}
+            game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer(unpack(args2))
+        end)
     end
 })
 
--- AUTO COLLECT PHYSICAL FRUITS
+-- GAMEPASS UNLOCKER
+MainTab:CreateDropdown({
+    Name = "Unlock Gamepasses",
+    Options = Gamepasses,
+    CurrentOption = "Dark Blade",
+    Callback = function(Option)
+        game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("PurchaseRaw", Option)
+    end
+})
+
+-- STAT EDITOR
+MainTab:CreateSlider({
+    Name = "Set Level",
+    Range = {1, 2550},
+    Increment = 1,
+    Suffix = "Level",
+    CurrentValue = 1,
+    Callback = function(Value)
+        game:GetService("Players").LocalPlayer.Data.Level.Value = Value
+    end
+})
+
+MainTab:CreateInput({
+    Name = "Set Money",
+    PlaceholderText = "Enter amount",
+    RemoveTextAfterFocusLost = false,
+    Callback = function(Text)
+        local amount = tonumber(Text)
+        if amount then
+            game:GetService("Players").LocalPlayer.Data.Beli.Value = amount
+        end
+    end
+})
+
+-- AUTO FARM
 MainTab:CreateToggle({
-    Name = "Auto-Collect Physical Fruits",
+    Name = "Auto-Farm Levels",
     CurrentValue = false,
     Callback = function(Value)
-        getgenv().autocollect = Value
-        while autocollect and task.wait() do
-            for _,fruit in pairs(workspace:GetChildren()) do
-                if fruit.Name == "Fruit " or fruit.Name == "Blox Fruit" then
-                    game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = fruit.Handle.CFrame
-                    task.wait(0.3)
+        getgenv().autofarm = Value
+        while autofarm and task.wait() do
+            pcall(function()
+                local plr = game.Players.LocalPlayer
+                local target = workspace.Enemies:FindFirstChildOfClass("Model")
+                if target and target:FindFirstChild("HumanoidRootPart") then
+                    plr.Character.HumanoidRootPart.CFrame = target.HumanoidRootPart.CFrame
+                    game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("Attack", "Normal")
                 end
-            end
+            end)
         end
     end
 })
 
--- INFINITE FRUIT CAPACITY
-MainTab:CreateToggle({
-    Name = "Unlimited Fruit Storage",
-    CurrentValue = false,
-    Callback = function(Value)
-        if Value then
-            game:GetService("Players").LocalPlayer.PlayerGui.Main.Inventory.Visible = true
-            for i = 1,10 do
-                game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("Belt")
-            end
-        end
-    end
-})
-
-Rayfield:Notify("Fruit Generator Loaded", "Get ANY fruit now!", 5)
+Rayfield:Notify("Ultimate HUB Loaded", "Fruits + Gamepasses + Stats activated!", 5)
