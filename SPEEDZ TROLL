@@ -1,0 +1,341 @@
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+-- Create the main window
+local Window = Rayfield:CreateWindow({
+    Name = "Troll Hub (Mobile)",
+    LoadingTitle = "Loading Troll Hub...",
+    LoadingSubtitle = "Mobile Edition",
+    ConfigurationSaving = { Enabled = false },
+    Discord = { Enabled = false },
+})
+
+-- Player Tab
+local PlayerTab = Window:CreateTab("Player")
+
+-- Movement Section
+local MovementSection = PlayerTab:CreateSection("Movement")
+
+-- Speed Control
+local currentWalkspeed = 16
+local SpeedSlider = PlayerTab:CreateSlider({
+    Name = "Walkspeed",
+    Range = {16, 200},
+    Increment = 1,
+    CurrentValue = 16,
+    Callback = function(Value)
+        currentWalkspeed = Value
+        if game.Players.LocalPlayer.Character then
+            local humanoid = game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+            if humanoid then
+                humanoid.WalkSpeed = Value
+            end
+        end
+    end,
+})
+
+-- Mobile Fly Toggle
+local flying = false
+local flySpeed = 50
+local flyConnection = nil
+local bodyVelocity = nil
+
+PlayerTab:CreateToggle({
+    Name = "Fly (Touch Controls)",
+    CurrentValue = false,
+    Callback = function(Value)
+        flying = Value
+        if flying then
+            local player = game.Players.LocalPlayer
+            local character = player.Character or player.CharacterAdded:Wait()
+            local humanoid = character:WaitForChild("Humanoid")
+            
+            humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+            if character:FindFirstChild("Animate") then
+                character.Animate.Disabled = true
+            end
+            
+            bodyVelocity = Instance.new("BodyVelocity")
+            bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+            bodyVelocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+            bodyVelocity.Parent = character.HumanoidRootPart
+            
+            -- Mobile touch controls
+            local touchGui = Instance.new("ScreenGui")
+            touchGui.Name = "FlyControls"
+            touchGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+            
+            -- Create joystick for movement
+            local joystick = Instance.new("Frame")
+            joystick.Name = "Joystick"
+            joystick.Size = UDim2.new(0.3, 0, 0.3, 0)
+            joystick.Position = UDim2.new(0.1, 0, 0.6, 0)
+            joystick.BackgroundTransparency = 0.7
+            joystick.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+            joystick.Parent = touchGui
+            
+            local joystickKnob = Instance.new("Frame")
+            joystickKnob.Name = "Knob"
+            joystickKnob.Size = UDim2.new(0.3, 0, 0.3, 0)
+            joystickKnob.Position = UDim2.new(0.35, 0, 0.35, 0)
+            joystickKnob.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+            joystickKnob.Parent = joystick
+            
+            -- Create buttons for up/down
+            local upButton = Instance.new("TextButton")
+            upButton.Name = "Up"
+            upButton.Size = UDim2.new(0.15, 0, 0.15, 0)
+            upButton.Position = UDim2.new(0.8, 0, 0.5, 0)
+            upButton.Text = "↑"
+            upButton.TextSize = 20
+            upButton.Parent = touchGui
+            
+            local downButton = Instance.new("TextButton")
+            downButton.Name = "Down"
+            downButton.Size = UDim2.new(0.15, 0, 0.15, 0)
+            downButton.Position = UDim2.new(0.8, 0, 0.7, 0)
+            downButton.Text = "↓"
+            downButton.TextSize = 20
+            downButton.Parent = touchGui
+            
+            -- Movement variables
+            local forward, backward, left, right, up, down = 0, 0, 0, 0, 0, 0
+            local camera = workspace.CurrentCamera
+            
+            -- Joystick movement
+            local touchStartPos = nil
+            local touchId = nil
+            
+            joystick.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.Touch then
+                    touchStartPos = input.Position
+                    touchId = input.UserInputState == Enum.UserInputState.Begin and input.UserInputType == Enum.UserInputType.Touch and input
+                end
+            end)
+            
+            joystick.InputChanged:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.Touch and input == touchId then
+                    local currentPos = input.Position
+                    local delta = (currentPos - touchStartPos)
+                    local maxDist = joystick.AbsoluteSize.X/2
+                    local dist = math.min(delta.Magnitude, maxDist)
+                    
+                    local direction = delta.Unit
+                    local x = direction.X * (dist/maxDist)
+                    local y = -direction.Y * (dist/maxDist)
+                    
+                    joystickKnob.Position = UDim2.new(0.35 + x*0.35, 0, 0.35 + y*0.35, 0)
+                    
+                    forward = math.clamp(y, -1, 1)
+                    right = math.clamp(x, -1, 1)
+                end
+            end)
+            
+            joystick.InputEnded:Connect(function(input)
+                if input == touchId then
+                    touchStartPos = nil
+                    touchId = nil
+                    joystickKnob.Position = UDim2.new(0.35, 0, 0.35, 0)
+                    forward, right = 0, 0
+                end
+            end)
+            
+            -- Up/Down buttons
+            upButton.MouseButton1Down:Connect(function()
+                up = 1
+            end)
+            
+            upButton.MouseButton1Up:Connect(function()
+                up = 0
+            end)
+            
+            downButton.MouseButton1Down:Connect(function()
+                down = 1
+            end)
+            
+            downButton.MouseButton1Up:Connect(function()
+                down = 0
+            end)
+            
+            -- Fly movement loop
+            flyConnection = game:GetService("RunService").Heartbeat:Connect(function()
+                if bodyVelocity and bodyVelocity.Parent then
+                    local direction = camera.CFrame:VectorToWorldSpace(
+                        Vector3.new(left + right, up + down, forward + backward))
+                    bodyVelocity.Velocity = direction * flySpeed
+                end
+            end)
+            
+            -- Clean up when toggled off
+            repeat wait() until not flying
+            if bodyVelocity then bodyVelocity:Destroy() end
+            if flyConnection then flyConnection:Disconnect() end
+            if touchGui then touchGui:Destroy() end
+            if character:FindFirstChild("Animate") then
+                character.Animate.Disabled = false
+            end
+            humanoid:ChangeState(Enum.HumanoidStateType.Running)
+        end
+    end,
+})
+
+-- Invisibility (Mobile Optimized)
+PlayerTab:CreateToggle({
+    Name = "Invisibility",
+    CurrentValue = false,
+    Callback = function(Value)
+        local character = game.Players.LocalPlayer.Character
+        if not character then return end
+        
+        if Value then
+            for _, part in pairs(character:GetDescendants()) do
+                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                    part.Transparency = 1
+                    if part:IsA("MeshPart") or part:IsA("Part") then
+                        part.LocalTransparencyModifier = 1
+                    end
+                end
+            end
+        else
+            for _, part in pairs(character:GetDescendants()) do
+                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                    part.Transparency = 0
+                    if part:IsA("MeshPart") or part:IsA("Part") then
+                        part.LocalTransparencyModifier = 0
+                    end
+                end
+            end
+        end
+    end,
+})
+
+-- Auto-update speed when character respawns
+game.Players.LocalPlayer.CharacterAdded:Connect(function(character)
+    character:WaitForChild("Humanoid")
+    task.wait(0.1)
+    if currentWalkspeed > 16 then
+        character.Humanoid.WalkSpeed = currentWalkspeed
+    end
+end)
+
+-- Reset Button
+PlayerTab:CreateButton({
+    Name = "Reset Speed",
+    Callback = function()
+        currentWalkspeed = 16
+        SpeedSlider:Set(16)
+        if game.Players.LocalPlayer.Character then
+            local humanoid = game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+            if humanoid then
+                humanoid.WalkSpeed = 16
+            end
+        end
+        Rayfield:Notify({
+            Title = "Speed Reset",
+            Content = "Walkspeed set back to normal (16)",
+            Duration = 3,
+        })
+    end,
+})
+
+-- Troll Tab
+local TrollTab = Window:CreateTab("Troll Tools")
+
+-- Kick All Players
+TrollTab:CreateButton({
+    Name = "Kick Everyone (Except Me)",
+    Callback = function()
+        local localPlayer = game.Players.LocalPlayer
+        for _, player in pairs(game.Players:GetPlayers()) do
+            if player ~= localPlayer then
+                player:Kick("Trolled by " .. localPlayer.Name)
+            end
+        end
+    end,
+})
+
+-- Kick Specific Player
+local kickDropdown = TrollTab:CreateDropdown({
+    Name = "Kick Player",
+    Options = {},
+    CurrentOption = "",
+    Callback = function(Option)
+        local player = game.Players:FindFirstChild(Option)
+        if player then
+            player:Kick("Trolled by " .. game.Players.LocalPlayer.Name)
+        end
+    end,
+})
+
+-- Update player list
+local function updatePlayerList()
+    local players = {}
+    for _, player in pairs(game.Players:GetPlayers()) do
+        if player ~= game.Players.LocalPlayer then
+            table.insert(players, player.Name)
+        end
+    end
+    kickDropdown:Refresh(players, true)
+end
+
+game.Players.PlayerAdded:Connect(updatePlayerList)
+game.Players.PlayerRemoving:Connect(updatePlayerList)
+updatePlayerList()
+
+-- Chat Troll Tab
+local ChatTab = Window:CreateTab("Chat Troll")
+
+-- Chat Title Input
+ChatTab:CreateInput({
+    Name = "Change Chat Title",
+    PlaceholderText = "Enter troll title",
+    RemoveTextAfterFocusLost = false,
+    Callback = function(Text)
+        game:GetService("TextChatService").TextChannels.RBXGeneral.DisplayName = Text or "Troll Hub"
+    end,
+})
+
+-- Chat Color Input
+ChatTab:CreateColorPicker({
+    Name = "Chat Title Color",
+    Color = Color3.fromRGB(255, 0, 0),
+    Callback = function(Color)
+        game:GetService("TextChatService").TextChannels.RBXGeneral:SetAttribute("ChatColor", Color)
+    end
+})
+
+-- Fake Chat Messages
+ChatTab:CreateInput({
+    Name = "Fake Message (Username)",
+    PlaceholderText = "PlayerName",
+    RemoveTextAfterFocusLost = false,
+    Callback = function() end
+})
+
+ChatTab:CreateInput({
+    Name = "Fake Message (Text)",
+    PlaceholderText = "Message content",
+    RemoveTextAfterFocusLost = false,
+    Callback = function() end
+})
+
+ChatTab:CreateButton({
+    Name = "Send Fake Message",
+    Callback = function()
+        local fakeName = "TrollBot"
+        local fakeMessage = "You got trolled!"
+        
+        -- Try to get the input values (implementation depends on your input method)
+        -- This is a basic implementation - you might need to modify based on your actual input system
+        for _,v in pairs(ChatTab:GetChildren()) do
+            if v.Name == "Fake Message (Username)" then
+                fakeName = v.Value or fakeName
+            elseif v.Name == "Fake Message (Text)" then
+                fakeMessage = v.Value or fakeMessage
+            end
+        end
+        
+        game:GetService("TextChatService").TextChannels.RBXGeneral:DisplaySystemMessage(
+            string.format("<font color='rgb(255,0,0)'>[%s]:</font> %s", fakeName, fakeMessage)
+        )
+    end,
+})
