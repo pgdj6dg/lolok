@@ -1,0 +1,122 @@
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local Window = Rayfield:CreateWindow({
+    Name = "🔥 SPEEDZ HUB v2",
+    LoadingTitle = "Ultimate Troll Tools Loaded",
+    LoadingSubtitle = "ESP + Fly + Kill All + Kick All",
+    ConfigurationSaving = { Enabled = true, FileName = "SPEEDZ_HUB" },
+    KeySystem = false,
+})
+
+-- Main Tab
+local MainTab = Window:CreateTab("Main Hacks", 4483362458)
+
+-- Speed Control (Slider + Input)
+local SpeedValue = 16
+MainTab:CreateSlider({
+    Name = "Speed Slider",
+    Range = {16, 500},
+    Increment = 1,
+    Suffix = "studs/s",
+    CurrentValue = 16,
+    Callback = function(Value)
+        SpeedValue = Value
+        if game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid") then
+            game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = Value
+        end
+    end
+})
+
+MainTab:CreateInput({
+    Name = "Custom Speed",
+    PlaceholderText = "Enter Speed (16-500)",
+    RemoveTextAfterFocusLost = false,
+    Callback = function(Text)
+        local num = tonumber(Text)
+        if num and num >= 16 and num <= 500 then
+            SpeedValue = num
+            if game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid") then
+                game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = num
+            end
+            Rayfield:Notify("Speed Set", "Custom speed: " .. num, 3)
+        else
+            Rayfield:Notify("Error", "Invalid speed (16-500 only)", 3)
+        end
+    end
+})
+
+-- Fly Toggle (Mobile-Friendly)
+local Flying = false
+MainTab:CreateToggle({
+    Name = "Fly Mode (Press Space/Click)",
+    CurrentValue = false,
+    Callback = function(Value)
+        Flying = Value
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/XNEOFF/FlyGuiV3/main/FlyGuiV3.txt"))()
+    end
+})
+
+-- ESP (Highlight Players)
+MainTab:CreateToggle({
+    Name = "ESP (See Players)",
+    CurrentValue = false,
+    Callback = function(Value)
+        if Value then
+            for _, player in pairs(game.Players:GetPlayers()) do
+                if player ~= game.Players.LocalPlayer then
+                    local highlight = Instance.new("Highlight")
+                    highlight.Parent = player.Character or player.CharacterAdded:Wait()
+                    highlight.FillColor = Color3.fromRGB(255, 0, 0)
+                    highlight.OutlineColor = Color3.fromRGB(255, 255, 0)
+                end
+            end
+        else
+            for _, player in pairs(game.Players:GetPlayers()) do
+                if player.Character then
+                    local highlight = player.Character:FindFirstChild("Highlight")
+                    if highlight then highlight:Destroy() end
+                end
+            end
+        end
+    end
+})
+
+-- KILL ALL (Except You)
+MainTab:CreateButton({
+    Name = "Kill Everyone (But You)",
+    Callback = function()
+        for _, player in pairs(game.Players:GetPlayers()) do
+            if player ~= game.Players.LocalPlayer and player.Character then
+                player.Character:BreakJoints()
+            end
+        end
+        Rayfield:Notify("Annihilation", "Everyone has been eliminated.", 5)
+    end
+})
+
+-- KICK ALL (Taunt Message)
+MainTab:CreateButton({
+    Name = "Kick Everyone (Taunt)",
+    Callback = function()
+        for _, player in pairs(game.Players:GetPlayers()) do
+            if player ~= game.Players.LocalPlayer then
+                game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, game.JobId, player)
+                task.wait(0.5)
+            end
+        end
+        Rayfield:Notify("Server Wiped", "I kicked u out lol 😂", 5)
+    end
+})
+
+-- Auto-Reapply on Respawn
+game.Players.LocalPlayer.CharacterAdded:Connect(function(character)
+    character:WaitForChild("Humanoid")
+    if Flying then
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/XNEOFF/FlyGuiV3/main/FlyGuiV3.txt"))()
+    end
+    if SpeedValue ~= 16 then
+        character.Humanoid.WalkSpeed = SpeedValue
+    end
+end)
+
+Rayfield:Notify("SPEEDZ HUB v2", "Successfully Loaded!", 5)
