@@ -1,0 +1,131 @@
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local Window = Rayfield:CreateWindow({
+    Name = "Mobile Hub",
+    Icon = "rbxassetid://0", 
+    LoadingTitle = "Mobile Hub",
+    LoadingSubtitle = "by YourName",
+    Theme = "Default",
+    
+    ConfigurationSaving = {
+        Enabled = true,
+        FolderName = nil,
+        FileName = "Mobile Hub"
+    },
+    
+    Discord = {
+        Enabled = false,
+        Invite = "noinvitelink",
+        RememberJoins = true
+    },
+    
+    KeySystem = false
+})
+
+-- Main Tab
+local MainTab = Window:CreateTab("Main Features", 4483362458)
+
+-- Speed Section
+local SpeedSection = MainTab:CreateSection("Speed")
+local SpeedToggle = MainTab:CreateToggle({
+    Name = "Speed Hack",
+    CurrentValue = false,
+    Flag = "SpeedToggle",
+    Callback = function(Value)
+        if Value then
+            game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = 50
+        else
+            game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = 16
+        end
+    end,
+})
+
+-- Fly Section
+local FlySection = MainTab:CreateSection("Fly")
+local FlyToggle = MainTab:CreateToggle({
+    Name = "Fly Mode",
+    CurrentValue = false,
+    Flag = "FlyToggle",
+    Callback = function(Value)
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/XNEOFF/FlyGuiV3/main/FlyGuiV3.txt"))()
+    end,
+})
+
+-- Invisibility Section
+local InvisSection = MainTab:CreateSection("Invisibility")
+local InvisToggle = MainTab:CreateToggle({
+    Name = "Invisibility",
+    CurrentValue = false,
+    Flag = "InvisToggle",
+    Callback = function(Value)
+        if Value then
+            for _, part in ipairs(game.Players.LocalPlayer.Character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.Transparency = 1
+                end
+            end
+        else
+            for _, part in ipairs(game.Players.LocalPlayer.Character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.Transparency = 0
+                end
+            end
+        end
+    end,
+})
+
+-- Player Tab
+local PlayerTab = Window:CreateTab("Player", 4483362458)
+
+-- Speed Slider
+local SpeedSlider = PlayerTab:CreateSlider({
+    Name = "Walk Speed",
+    Range = {16, 200},
+    Increment = 1,
+    Suffix = "speed",
+    CurrentValue = 16,
+    Flag = "SpeedSlider",
+    Callback = function(Value)
+        game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = Value
+    end,
+})
+
+-- Jump Power Slider
+local JumpSlider = PlayerTab:CreateSlider({
+    Name = "Jump Power",
+    Range = {50, 200},
+    Increment = 1,
+    Suffix = "power",
+    CurrentValue = 50,
+    Flag = "JumpSlider",
+    Callback = function(Value)
+        game.Players.LocalPlayer.Character.Humanoid.JumpPower = Value
+    end,
+})
+
+-- Character connection to handle respawns
+game.Players.LocalPlayer.CharacterAdded:Connect(function(character)
+    character:WaitForChild("Humanoid")
+    
+    if Rayfield.Flags["SpeedToggle"].CurrentValue then
+        character.Humanoid.WalkSpeed = 50
+    end
+    
+    if Rayfield.Flags["InvisToggle"].CurrentValue then
+        for _, part in ipairs(character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.Transparency = 1
+            end
+        end
+    end
+    
+    if Rayfield.Flags["SpeedSlider"].CurrentValue then
+        character.Humanoid.WalkSpeed = Rayfield.Flags["SpeedSlider"].CurrentValue
+    end
+    
+    if Rayfield.Flags["JumpSlider"].CurrentValue then
+        character.Humanoid.JumpPower = Rayfield.Flags["JumpSlider"].CurrentValue
+    end
+end)
+
+Rayfield:LoadConfiguration()
