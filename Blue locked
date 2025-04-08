@@ -1,0 +1,201 @@
+--///////////////////////////////////////////////
+--/// BLUE LOCK RIVALS: TOUCH EDITION /////
+--///////////////////////////////////////////////
+
+-- UI Setup
+local Players = game:GetService("Players")
+local PlayerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
+
+-- Create a ScreenGui for mobile buttons
+local MoveSetUI = Instance.new("ScreenGui")
+MoveSetUI.Name = "BlueLockMoveSetUI"
+MoveSetUI.Parent = PlayerGui
+
+-- Background Frame (Optional)
+local Frame = Instance.new("Frame")
+Frame.Size = UDim2.new(1, 0, 1, 0)
+Frame.BackgroundTransparency = 1
+Frame.Parent = MoveSetUI
+
+-- Header (Matches your image)
+local Header = Instance.new("TextLabel")
+Header.Text = "KING ULT"
+Header.Font = Enum.Font.GothamBlack
+Header.TextSize = 28
+Header.TextColor3 = Color3.fromRGB(255, 255, 255)
+Header.Position = UDim2.new(0.5, 0, 0.05, 0)
+Header.AnchorPoint = Vector2.new(0.5, 0)
+Header.BackgroundTransparency = 1
+Header.Parent = Frame
+
+local Subheader = Instance.new("TextLabel")
+Subheader.Text = "BLUE LOCK RIVALS"
+Subheader.Font = Enum.Font.GothamMedium
+Subheader.TextSize = 18
+Subheader.TextColor3 = Color3.fromRGB(200, 200, 200)
+Subheader.Position = UDim2.new(0.5, 0, 0.1, 0)
+Subheader.AnchorPoint = Vector2.new(0.5, 0)
+Subheader.BackgroundTransparency = 1
+Subheader.Parent = Frame
+
+-- Footer (Matches your image)
+local HomeButton = Instance.new("TextButton")
+HomeButton.Text = "HOME"
+HomeButton.Font = Enum.Font.GothamBold
+HomeButton.TextSize = 16
+HomeButton.Position = UDim2.new(0.2, 0, 0.9, 0)
+HomeButton.Size = UDim2.new(0.2, 0, 0.05, 0)
+HomeButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+HomeButton.Parent = Frame
+
+local LobbyButton = Instance.new("TextButton")
+LobbyButton.Text = "RETAIN TO LOBBY"
+LobbyButton.Font = Enum.Font.GothamBold
+LobbyButton.TextSize = 16
+LobbyButton.Position = UDim2.new(0.6, 0, 0.9, 0)
+LobbyButton.Size = UDim2.new(0.3, 0, 0.05, 0)
+LobbyButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+LobbyButton.Parent = Frame
+
+-- Character Data with Moves
+local characters = {
+    ["Isagi Yoichi"] = {
+        Moves = {
+            {Name = "Direct Shot", Key = "Q", Color = Color3.fromRGB(0, 150, 255)},
+            {Name = "Meta Vision", Key = "E", Color = Color3.fromRGB(0, 200, 255)},
+            {Name = "Off-the-Ball", Key = "R", Color = Color3.fromRGB(0, 100, 200)}
+        },
+        Ultimates = {
+            {Name = "Flow State", Key = "F", Color = Color3.fromRGB(0, 255, 255)},
+            {Name = "Chemical Reaction", Key = "G", Color = Color3.fromRGB(0, 255, 200)}
+        }
+    },
+    ["Bachira Meguru"] = {
+        Moves = {
+            {Name = "Monster Dribble", Key = "Q", Color = Color3.fromRGB(255, 0, 200)},
+            {Name = "Rainbow Flick", Key = "E", Color = Color3.fromRGB(150, 0, 150)},
+            {Name = "Elastico", Key = "R", Color = Color3.fromRGB(200, 0, 100)}
+        },
+        Ultimates = {
+            {Name = "Monster Awakening", Key = "F", Color = Color3.fromRGB(255, 50, 255)}
+        }
+    }
+}
+
+-- Current character data
+local currentCharacter = nil
+local moveButtons = {}
+local ultimateButtons = {}
+
+-- Create move buttons with dynamic names
+local function CreateMoveButtons(characterName)
+    -- Clear old buttons
+    for _, btn in pairs(moveButtons) do
+        btn:Destroy()
+    end
+    for _, btn in pairs(ultimateButtons) do
+        btn:Destroy()
+    end
+    moveButtons = {}
+    ultimateButtons = {}
+    
+    -- Set current character
+    currentCharacter = characterName
+    local charData = characters[characterName]
+    
+    -- Create regular move buttons
+    for i, move in ipairs(charData.Moves) do
+        local button = Instance.new("TextButton")
+        button.Name = move.Key
+        button.Text = move.Key .. ": " .. move.Name
+        button.Font = Enum.Font.GothamBold
+        button.TextSize = 14
+        button.Size = UDim2.new(0.15, 0, 0.08, 0)
+        button.Position = UDim2.new(0.1, 0, 0.7 + (i-1)*0.1, 0)
+        button.BackgroundColor3 = move.Color
+        button.TextColor3 = Color3.new(1, 1, 1)
+        button.Parent = Frame
+        
+        -- Glow effect
+        local glow = Instance.new("UIStroke")
+        glow.Color = move.Color
+        glow.Thickness = 2
+        glow.Parent = button
+        
+        button.MouseButton1Click:Connect(function()
+            ExecuteMove(i)
+        end)
+        
+        table.insert(moveButtons, button)
+    end
+    
+    -- Create ultimate buttons
+    for i, ultimate in ipairs(charData.Ultimates) do
+        local button = Instance.new("TextButton")
+        button.Name = ultimate.Key
+        button.Text = ultimate.Key .. ": " .. ultimate.Name
+        button.Font = Enum.Font.GothamBold
+        button.TextSize = 18
+        button.Size = UDim2.new(0.2, 0, 0.12, 0)
+        button.Position = UDim2.new(0.7, 0, 0.7 + (i-1)*0.15, 0)
+        button.BackgroundColor3 = ultimate.Color
+        button.TextColor3 = Color3.new(1, 1, 1)
+        button.Parent = Frame
+        
+        -- Glow effect
+        local glow = Instance.new("UIStroke")
+        glow.Color = ultimate.Color
+        glow.Thickness = 2
+        glow.Parent = button
+        
+        -- Pulse when ready
+        spawn(function()
+            while true do
+                if ultimateCharges[ultimate.Key] and ultimateCharges[ultimate.Key] >= 100 then
+                    glow.Transparency = 0.5
+                    wait(0.5)
+                    glow.Transparency = 0
+                    wait(0.5)
+                else
+                    wait(1)
+                end
+            end
+        end)
+        
+        button.MouseButton1Click:Connect(function()
+            ExecuteUltimate(ultimate.Key)
+        end)
+        
+        table.insert(ultimateButtons, button)
+    end
+    
+    -- Update header with character name
+    Header.Text = characterName:upper()
+end
+
+-- Example usage (call this when selecting a character)
+CreateMoveButtons("Isagi Yoichi") -- Initial character
+wait(5)
+CreateMoveButtons("Bachira Meguru") -- Change character after 5 seconds
+
+-- Your existing move execution functions would go here
+local function ExecuteMove(moveIndex)
+    print("Executing move:", currentCharacter, characters[currentCharacter].Moves[moveIndex].Name)
+end
+
+local function ExecuteUltimate(key)
+    print("Executing ultimate:", currentCharacter, key)
+end
+
+-- Ultimate charge system
+local ultimateCharges = {F = 0, G = 0}
+
+-- Simulate charging ultimates
+spawn(function()
+    while true do
+        for key in pairs(ultimateCharges) do
+            ultimateCharges[key] = (ultimateCharges[key] + 5) % 110
+        end
+        wait(1)
+    end
+end)
