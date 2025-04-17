@@ -1,0 +1,291 @@
+-- Roblox Game Explorer Script
+-- Shows game structure and allows local modifications
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local CoreGui = game:GetService("CoreGui")
+
+-- Create main UI
+local Explorer = Instance.new("ScreenGui")
+Explorer.Name = "GameExplorer"
+Explorer.Parent = CoreGui
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0.3, 0, 0.6, 0)
+MainFrame.Position = UDim2.new(0.65, 0, 0.2, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+MainFrame.BorderSizePixel = 0
+MainFrame.Parent = Explorer
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0.05, 0)
+Title.Text = "Game Explorer"
+Title.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+Title.TextColor3 = Color3.new(1, 1, 1)
+Title.Font = Enum.Font.SourceSansBold
+Title.Parent = MainFrame
+
+local TreeView = Instance.new("ScrollingFrame")
+TreeView.Size = UDim2.new(0.4, 0, 0.9, 0)
+TreeView.Position = UDim2.new(0, 0, 0.05, 0)
+TreeView.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+TreeView.BorderSizePixel = 0
+TreeView.ScrollBarThickness = 8
+TreeView.Parent = MainFrame
+
+local PropertiesFrame = Instance.new("ScrollingFrame")
+PropertiesFrame.Size = UDim2.new(0.6, 0, 0.9, 0)
+PropertiesFrame.Position = UDim2.new(0.4, 0, 0.05, 0)
+PropertiesFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+PropertiesFrame.BorderSizePixel = 0
+PropertiesFrame.ScrollBarThickness = 8
+PropertiesFrame.Parent = MainFrame
+
+local SearchBox = Instance.new("TextBox")
+SearchBox.Size = UDim2.new(0.9, 0, 0.05, 0)
+SearchBox.Position = UDim2.new(0.05, 0, 0.96, 0)
+SearchBox.PlaceholderText = "Search..."
+SearchBox.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+SearchBox.TextColor3 = Color3.new(1, 1, 1)
+SearchBox.Parent = MainFrame
+
+-- Tree view functions
+local function CreateTreeItem(parent, instance)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 0, 20)
+    frame.BackgroundTransparency = 1
+    
+    local toggle = Instance.new("TextButton")
+    toggle.Size = UDim2.new(0, 20, 0, 20)
+    toggle.Text = "+"
+    toggle.BackgroundTransparency = 1
+    toggle.TextColor3 = Color3.new(1, 1, 1)
+    toggle.Font = Enum.Font.SourceSansBold
+    toggle.Parent = frame
+    
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, -20, 1, 0)
+    label.Position = UDim2.new(0, 20, 0, 0)
+    label.Text = instance.Name
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.BackgroundTransparency = 1
+    label.TextColor3 = Color3.new(1, 1, 1)
+    label.Parent = frame
+    
+    local childrenFrame = Instance.new("Frame")
+    childrenFrame.Size = UDim2.new(1, -10, 0, 0)
+    childrenFrame.Position = UDim2.new(0, 10, 0, 20)
+    childrenFrame.BackgroundTransparency = 1
+    childrenFrame.Visible = false
+    childrenFrame.Parent = frame
+    
+    local function UpdateChildren()
+        childrenFrame:ClearAllChildren()
+        
+        for _, child in ipairs(instance:GetChildren()) do
+            local childItem = CreateTreeItem(childrenFrame, child)
+            childItem.Parent = childrenFrame
+            childrenFrame.Size = UDim2.new(1, 0, 0, childrenFrame.Size.Y.Offset + childItem.Size.Y.Offset)
+        end
+    end
+    
+    toggle.MouseButton1Click:Connect(function()
+        if toggle.Text == "+" then
+            toggle.Text = "-"
+            UpdateChildren()
+            childrenFrame.Visible = true
+            frame.Size = UDim2.new(1, 0, 0, 20 + childrenFrame.Size.Y.Offset)
+        else
+            toggle.Text = "+"
+            childrenFrame.Visible = false
+            frame.Size = UDim2.new(1, 0, 0, 20)
+        end
+    end)
+    
+    label.MouseButton1Click:Connect(function()
+        -- Show properties when clicked
+        PropertiesFrame:ClearAllChildren()
+        
+        local nameLabel = Instance.new("TextLabel")
+        nameLabel.Size = UDim2.new(1, 0, 0, 30)
+        nameLabel.Text = "Name: " .. instance.Name
+        nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+        nameLabel.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+        nameLabel.TextColor3 = Color3.new(1, 1, 1)
+        nameLabel.Parent = PropertiesFrame
+        
+        local classNameLabel = Instance.new("TextLabel")
+        classNameLabel.Size = UDim2.new(1, 0, 0, 30)
+        classNameLabel.Position = UDim2.new(0, 0, 0, 30)
+        classNameLabel.Text = "Class: " .. instance.ClassName
+        classNameLabel.TextXAlignment = Enum.TextXAlignment.Left
+        classNameLabel.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+        classNameLabel.TextColor3 = Color3.new(1, 1, 1)
+        classNameLabel.Parent = PropertiesFrame
+        
+        local yOffset = 60
+        
+        -- Show all properties
+        for _, prop in ipairs(instance:GetProperties()) do
+            if prop ~= "Name" and prop ~= "ClassName" then
+                local propFrame = Instance.new("Frame")
+                propFrame.Size = UDim2.new(1, 0, 0, 30)
+                propFrame.Position = UDim2.new(0, 0, 0, yOffset)
+                propFrame.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+                propFrame.Parent = PropertiesFrame
+                
+                local propLabel = Instance.new("TextLabel")
+                propLabel.Size = UDim2.new(0.4, 0, 1, 0)
+                propLabel.Text = prop
+                propLabel.TextXAlignment = Enum.TextXAlignment.Left
+                propLabel.BackgroundTransparency = 1
+                propLabel.TextColor3 = Color3.new(1, 1, 1)
+                propLabel.Parent = propFrame
+                
+                local valueLabel = Instance.new("TextLabel")
+                valueLabel.Size = UDim2.new(0.4, -5, 1, 0)
+                valueLabel.Position = UDim2.new(0.4, 0, 0, 0)
+                valueLabel.Text = tostring(instance[prop])
+                valueLabel.TextXAlignment = Enum.TextXAlignment.Left
+                valueLabel.BackgroundTransparency = 1
+                valueLabel.TextColor3 = Color3.new(1, 1, 1)
+                valueLabel.Parent = propFrame
+                
+                local editButton = Instance.new("TextButton")
+                editButton.Size = UDim2.new(0.2, -5, 1, 0)
+                editButton.Position = UDim2.new(0.8, 5, 0, 0)
+                editButton.Text = "Edit"
+                editButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+                editButton.TextColor3 = Color3.new(1, 1, 1)
+                editButton.Parent = propFrame
+                
+                editButton.MouseButton1Click:Connect(function()
+                    local editFrame = Instance.new("Frame")
+                    editFrame.Size = UDim2.new(0.8, 0, 0.3, 0)
+                    editFrame.Position = UDim2.new(0.1, 0, 0.35, 0)
+                    editFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+                    editFrame.Parent = Explorer
+                    
+                    local editTitle = Instance.new("TextLabel")
+                    editTitle.Size = UDim2.new(1, 0, 0.2, 0)
+                    editTitle.Text = "Edit " .. prop
+                    editTitle.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+                    editTitle.TextColor3 = Color3.new(1, 1, 1)
+                    editTitle.Parent = editFrame
+                    
+                    local inputBox = Instance.new("TextBox")
+                    inputBox.Size = UDim2.new(0.9, 0, 0.3, 0)
+                    inputBox.Position = UDim2.new(0.05, 0, 0.25, 0)
+                    inputBox.Text = tostring(instance[prop])
+                    inputBox.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+                    inputBox.TextColor3 = Color3.new(1, 1, 1)
+                    inputBox.Parent = editFrame
+                    
+                    local saveButton = Instance.new("TextButton")
+                    saveButton.Size = UDim2.new(0.4, 0, 0.2, 0)
+                    saveButton.Position = UDim2.new(0.1, 0, 0.6, 0)
+                    saveButton.Text = "Save"
+                    saveButton.BackgroundColor3 = Color3.fromRGB(0, 120, 0)
+                    saveButton.TextColor3 = Color3.new(1, 1, 1)
+                    saveButton.Parent = editFrame
+                    
+                    local cancelButton = Instance.new("TextButton")
+                    cancelButton.Size = UDim2.new(0.4, 0, 0.2, 0)
+                    cancelButton.Position = UDim2.new(0.5, 0, 0.6, 0)
+                    cancelButton.Text = "Cancel"
+                    cancelButton.BackgroundColor3 = Color3.fromRGB(120, 0, 0)
+                    cancelButton.TextColor3 = Color3.new(1, 1, 1)
+                    cancelButton.Parent = editFrame
+                    
+                    saveButton.MouseButton1Click:Connect(function()
+                        local success, err = pcall(function()
+                            if prop == "Name" then
+                                instance.Name = inputBox.Text
+                            else
+                                local value = inputBox.Text
+                                if typeof(instance[prop]) == "number" then
+                                    value = tonumber(value)
+                                elseif typeof(instance[prop]) == "boolean" then
+                                    value = (value:lower() == "true")
+                                end
+                                instance[prop] = value
+                            end
+                        end)
+                        
+                        if not success then
+                            local errorLabel = Instance.new("TextLabel")
+                            errorLabel.Size = UDim2.new(1, 0, 0.1, 0)
+                            errorLabel.Position = UDim2.new(0, 0, 0.85, 0)
+                            errorLabel.Text = "Error: " .. err
+                            errorLabel.TextColor3 = Color3.new(1, 0, 0)
+                            errorLabel.Parent = editFrame
+                            wait(2)
+                        end
+                        
+                        editFrame:Destroy()
+                        label.MouseButton1Click:Invoke() -- Refresh properties
+                    end)
+                    
+                    cancelButton.MouseButton1Click:Connect(function()
+                        editFrame:Destroy()
+                    end)
+                end)
+                
+                yOffset = yOffset + 30
+            end
+        end
+    end)
+    
+    return frame
+end
+
+-- Initialize tree view with game hierarchy
+local function InitializeTreeView()
+    TreeView:ClearAllChildren()
+    
+    local workspaceItem = CreateTreeItem(TreeView, game:GetService("Workspace"))
+    workspaceItem.Parent = TreeView
+    
+    local playersItem = CreateTreeItem(TreeView, game:GetService("Players"))
+    playersItem.Parent = TreeView
+    
+    local lightingItem = CreateTreeItem(TreeView, game:GetService("Lighting"))
+    lightingItem.Parent = TreeView
+    
+    local replicatedStorageItem = CreateTreeItem(TreeView, game:GetService("ReplicatedStorage"))
+    replicatedStorageItem.Parent = TreeView
+    
+    local serverScriptServiceItem = CreateTreeItem(TreeView, game:GetService("ServerScriptService"))
+    serverScriptServiceItem.Parent = TreeView
+    
+    local serverStorageItem = CreateTreeItem(TreeView, game:GetService("ServerStorage"))
+    serverStorageItem.Parent = TreeView
+end
+
+InitializeTreeView()
+
+-- Search functionality
+SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
+    local searchText = SearchBox.Text:lower()
+    if searchText == "" then
+        InitializeTreeView()
+        return
+    end
+    
+    -- This would need a more sophisticated search implementation
+    -- Currently just re-initializes the tree view
+    InitializeTreeView()
+end)
+
+-- Add a close button
+local CloseButton = Instance.new("TextButton")
+CloseButton.Size = UDim2.new(0.05, 0, 0.05, 0)
+CloseButton.Position = UDim2.new(0.95, 0, 0, 0)
+CloseButton.Text = "X"
+CloseButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+CloseButton.TextColor3 = Color3.new(1, 1, 1)
+CloseButton.Parent = MainFrame
+
+CloseButton.MouseButton1Click:Connect(function()
+    Explorer:Destroy()
+end)
