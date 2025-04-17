@@ -1,13 +1,10 @@
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
--- Mobile detection
-local IS_MOBILE = game:GetService("UserInputService").TouchEnabled
-
 -- Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
+local Workspace = game:GetService("Workspace")
 
 -- Player setup
 local player = Players.LocalPlayer
@@ -18,22 +15,37 @@ local humanoid = character:WaitForChild("Humanoid")
 local ball = nil
 local ballHighlight = nil
 local ballHitbox = nil
-local hitboxSize = 1.0
-local ballAttached = false
+local hitboxSize = 1.5 -- Default size
 
--- Free cam system
+-- ESP system
+local espEnabled = false
+local espBoxes = {}
+
+-- Freecam system
 local freecamEnabled = false
 local originalCameraType = nil
-local cameraConnection = nil
-local freecamSpeed = 10
-local freecamFOV = 70
 
--- Touch controls GUI
-local touchGUI = Instance.new("ScreenGui")
-touchGUI.Name = "BlueLockMobileUI"
-touchGUI.Parent = game:GetService("CoreGui")
+-- Find the closest ball to player
+local function findClosestBall()
+    local closestBall = nil
+    local closestDistance = math.huge
+    local characterPos = character:GetPivot().Position
 
--- Find ball with hitbox visualization
+    -- Search all BaseParts that could be a ball
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if obj:IsA("BasePart") and (obj.Name:lower():find("ball") or obj.Shape == Enum.PartType.Ball or obj:IsA("MeshPart")) then
+            local distance = (obj.Position - characterPos).Magnitude
+            if distance < closestDistance then
+                closestBall = obj
+                closestDistance = distance
+            end
+        end
+    end
+
+    return closestBall
+end
+
+-- Update ball hitbox visualization
 local function updateHitbox()
     if ball and ballHitbox then
         ballHitbox.Size = ball.Size * hitboxSize
@@ -41,85 +53,13 @@ local function updateHitbox()
     end
 end
 
-local function attachBallToCamera()
-    if not ball or not workspace.CurrentCamera then return end
-    
-    local camera = workspace.CurrentCamera
-    local ballOffset = CFrame.new(0, 0, -5) -- 5 studs in front of camera
-    
-    RunService.RenderStepped:Connect(function()
-        if freecamEnabled and ball then
-            ball.CFrame = camera.CFrame * ballOffset
-        end
-    end)
-end
-
-local function toggleFreecam()
-    freecamEnabled = not freecamEnabled
-    local camera = workspace.CurrentCamera
-    
-    if freecamEnabled then
-        -- Save original state
-        originalCameraType = camera.CameraType
-        humanoid.WalkSpeed = 0 -- Freeze character
-        
-        -- Enable freecam
-        camera.CameraType = Enum.CameraType.Scriptable
-        camera.FieldOfView = freecamFOV
-        
-        -- Attach ball if found
-        if ball then
-            attachBallToCamera()
-        end
-        
-        -- Mobile joystick for camera control
-        if IS_MOBILE then
-            createMobileJoystick()
-        end
-        
-        Rayfield:Notify({
-            Title = "Freecam Enabled",
-            Content = "Fly with movement controls\nBall will follow camera",
-            Duration = 5
-        })
-    else
-        -- Restore original state
-        camera.CameraType = originalCameraType or Enum.CameraType.Custom
-        humanoid.WalkSpeed = 16
-        
-        -- Release ball
-        if ball then
-            ball.Anchored = false
-        end
-        
-        -- Remove mobile joystick
-        if IS_MOBILE and touchGUI:FindFirstChild("Joystick") then
-            touchGUI.Joystick:Destroy()
-        end
-        
-        Rayfield:Notify({
-            Title = "Freecam Disabled",
-            Content = "Returned to normal view",
-            Duration = 3
-        })
-    end
-end
-
-local function findBall()
-    -- Cleanup old visuals
+-- Create/update ball visuals
+local function setupBallVisuals()
     if ballHighlight then ballHighlight:Destroy() end
     if ballHitbox then ballHitbox:Destroy() end
 
-    -- Find ball (mobile-optimized search)
-    for _, obj in pairs(workspace:GetChildren()) do
-        if obj:IsA("BasePart") and obj.Shape == Enum.PartType.Ball then
-            ball = obj
-            break
-        end
-    end
-
     if ball then
-        -- Highlight
+        -- Ball highlight
         ballHighlight = Instance.new("Highlight")
         ballHighlight.Name = "BallHighlight"
         ballHighlight.FillColor = Color3.fromRGB(0, 255, 0)
@@ -135,122 +75,178 @@ local function findBall()
         ballHitbox.Material = Enum.Material.Neon
         ballHitbox.Anchored = true
         ballHitbox.CanCollide = false
-        ballHitbox.Parent = workspace
+        ballHitbox.Parent = Workspace
         updateHitbox()
 
         -- Keep hitbox updated
         RunService.Heartbeat:Connect(updateHitbox)
     end
-
-    return ball
 end
 
--- Mobile joystick for freecam control
-local function createMobileJoystick()
-    if touchGUI:FindFirstChild("Joystick") then return end
+-- Player ESP functions
+local function createESP(target)
+    if not target:FindFirstChild("HumanoidRootPart") then return end
+
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "ESP_Highlight"
+    highlight.FillColor = Color3.fromRGB(255, 50, 50)
+    highlight.OutlineColor = Color3.fromRGB(255, 100, 100)
+    highlight.FillTransparency = 0.5
+    highlight.Parent = target
+    espBoxes[target] = highlight
+end
+
+local function removeESP(target)
+    if espBoxes[target] then
+        espBoxes[target]:Destroy()
+        espBoxes[target] = nil
+    end
+end
+
+local function toggleESP()
+    espEnabled = not espEnabled
     
-    local joystick = Instance.new("Frame")
-    joystick.Name = "Joystick"
-    joystick.Size = UDim2.new(0, 150, 0, 150)
-    joystick.Position = UDim2.new(0, 50, 1, -200)
-    joystick.BackgroundTransparency = 0.7
-    joystick.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    joystick.Parent = touchGUI
-    
-    local dot = Instance.new("Frame")
-    dot.Name = "Dot"
-    dot.Size = UDim2.new(0, 40, 0, 40)
-    dot.Position = UDim2.new(0.5, -20, 0.5, -20)
-    dot.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
-    dot.BackgroundTransparency = 0.3
-    dot.Parent = joystick
-    
-    -- Joystick logic
-    local touchStartPos = nil
-    local camera = workspace.CurrentCamera
-    
-    joystick.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.Touch then
-            touchStartPos = input.Position
-        end
-    end)
-    
-    joystick.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.Touch and touchStartPos and freecamEnabled then
-            local delta = input.Position - touchStartPos
-            local direction = Vector2.new(delta.X, delta.Y).Unit
-            local power = math.min(delta.Magnitude / 75, 1)
-            
-            -- Move dot
-            dot.Position = UDim2.new(0.5, direction.X * 55 * power, 0.5, direction.Y * 55 * power)
-            
-            -- Move camera
-            if camera then
-                local lookVector = camera.CFrame.LookVector
-                local rightVector = camera.CFrame.RightVector
-                
-                camera.CFrame = camera.CFrame + 
-                    (rightVector * direction.X * power * freecamSpeed * 0.1) +
-                    (Vector3.new(0, 1, 0) * -direction.Y * power * freecamSpeed * 0.1)
+    if espEnabled then
+        -- Add ESP to existing players
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= Players.LocalPlayer and player.Character then
+                createESP(player.Character)
             end
         end
-    end)
-    
-    joystick.InputEnded:Connect(function()
-        dot.Position = UDim2.new(0.5, -20, 0.5, -20)
-    end)
+        
+        -- Connect for new players
+        Players.PlayerAdded:Connect(function(player)
+            player.CharacterAdded:Connect(function(character)
+                if espEnabled then
+                    createESP(character)
+                end
+            end)
+        end)
+    else
+        -- Remove all ESP
+        for target, _ in pairs(espBoxes) do
+            removeESP(target)
+        end
+    end
 end
 
--- Create mobile buttons
-local function createTouchButton(name, position, callback)
-    local button = Instance.new("TextButton")
-    button.Name = name
-    button.Text = name
-    button.Size = UDim2.new(0, 100, 0, 50)
-    button.Position = position
-    button.BackgroundColor3 = Color3.fromRGB(0, 100, 255)
-    button.TextColor3 = Color3.fromRGB(255, 255, 255)
-    button.Font = Enum.Font.GothamBold
-    button.TextSize = 14
-    button.Parent = touchGUI
+-- Freecam system using Roblox's controls
+local function toggleFreecam()
+    freecamEnabled = not freecamEnabled
+    local camera = Workspace.CurrentCamera
     
-    button.TouchTap:Connect(callback)
-    button.MouseButton1Click:Connect(callback)
+    if freecamEnabled then
+        -- Enable freecam
+        originalCameraType = camera.CameraType
+        camera.CameraType = Enum.CameraType.Scriptable
+        
+        -- Attach ball to camera
+        if ball then
+            ball.Anchored = true
+            RunService.RenderStepped:Connect(function()
+                if ball and camera then
+                    ball.CFrame = camera.CFrame * CFrame.new(0, 0, -5)
+                end
+            end)
+        end
+        
+        Rayfield:Notify({
+            Title = "Freecam Enabled",
+            Content = "Use normal movement controls\nBall will follow camera",
+            Duration = 5
+        })
+    else
+        -- Disable freecam
+        camera.CameraType = originalCameraType or Enum.CameraType.Custom
+        
+        -- Release ball
+        if ball then
+            ball.Anchored = false
+        end
+        
+        Rayfield:Notify({
+            Title = "Freecam Disabled",
+            Content = "Returned to normal view",
+            Duration = 3
+        })
+    end
+end
+
+-- Working moves
+local function directShot()
+    if not ball then ball = findClosestBall() end
+    if ball then
+        ball.Velocity = Workspace.CurrentCamera.CFrame.LookVector * 150
+    end
+end
+
+local function curveShot()
+    if not ball then ball = findClosestBall() end
+    if ball then
+        local direction = Workspace.CurrentCamera.CFrame.LookVector
+        direction = direction + Vector3.new(0, 0.3, 0) -- Add curve
+        ball.Velocity = direction * 120
+    end
+end
+
+local function powerDribble()
+    if not ball then ball = findClosestBall() end
+    if ball then
+        local spin = Instance.new("BodyAngularVelocity")
+        spin.AngularVelocity = Vector3.new(0, 15, 0)
+        spin.MaxTorque = Vector3.new(2000, 2000, 2000)
+        spin.Parent = ball
+        game.Debris:AddItem(spin, 3)
+    end
 end
 
 -- Create UI
 local Window = Rayfield:CreateWindow({
-    Name = "BLUE LOCK FREE CAM",
-    LoadingTitle = "Loading Freecam System...",
-    LoadingSubtitle = "Mobile controls ready",
+    Name = "BLUE LOCK ULTIMATE",
+    LoadingTitle = "Loading Enhanced Features...",
+    LoadingSubtitle = "Fixed ESP + Freecam",
     ConfigurationSaving = {
-        Enabled = false,
+        Enabled = true,
+        FolderName = "BlueLockFixed",
+        FileName = "Settings"
     }
 })
 
 -- Main Tab
-local MainTab = Window:CreateTab("Controls")
-MainTab:CreateSection("Camera Settings")
+local MainTab = Window:CreateTab("Main")
+MainTab:CreateSection("Core Controls")
 
 MainTab:CreateButton({
-    Name = "Find Ball",
-    Callback = findBall
+    Name = "Find Closest Ball",
+    Callback = function()
+        ball = findClosestBall()
+        if ball then
+            setupBallVisuals()
+            Rayfield:Notify({
+                Title = "Ball Found",
+                Content = "Closest ball highlighted",
+                Duration = 3
+            })
+        else
+            Rayfield:Notify({
+                Title = "No Ball Found",
+                Content = "Couldn't locate any ball",
+                Duration = 3
+            })
+        end
+    end
+})
+
+MainTab:CreateToggle({
+    Name = "Player ESP",
+    CurrentValue = false,
+    Callback = toggleESP
 })
 
 MainTab:CreateToggle({
     Name = "Freecam Mode",
     CurrentValue = false,
     Callback = toggleFreecam
-})
-
-MainTab:CreateSlider({
-    Name = "Freecam Speed",
-    Range = {5, 30},
-    Increment = 1,
-    CurrentValue = freecamSpeed,
-    Callback = function(value)
-        freecamSpeed = value
-    end
 })
 
 MainTab:CreateSlider({
@@ -266,108 +262,45 @@ MainTab:CreateSlider({
 
 -- Moves Tab
 local MovesTab = Window:CreateTab("Moves")
-MovesTab:CreateSection("Touch Controls")
+MovesTab:CreateSection("Working Techniques")
 
-local moves = {
-    {
-        Name = "POWER SHOT",
-        Callback = function()
-            if not ball then findBall() end
-            if ball then
-                ball.Velocity = (workspace.CurrentCamera.CFrame.LookVector * 150)
-            end
-        end
-    },
-    {
-        Name = "DETACH BALL",
-        Callback = function()
-            if ball then
-                ball.Anchored = false
-                Rayfield:Notify({
-                    Title = "Ball Released",
-                    Content = "Ball physics restored",
-                    Duration = 2
-                })
-            end
-        end
-    }
-}
+MovesTab:CreateButton({
+    Name = "DIRECT SHOT (Q)",
+    Callback = directShot
+})
 
--- Create mobile controls if on mobile
-if IS_MOBILE then
-    createTouchButton("SHOOT", UDim2.new(1, -120, 1, -120), moves[1].Callback)
-    createTouchButton("DETACH", UDim2.new(1, -120, 1, -180), moves[2].Callback)
-    createTouchButton("FREECAM", UDim2.new(0, 20, 1, -120), toggleFreecam)
+MovesTab:CreateButton({
+    Name = "CURVE SHOT (E)",
+    Callback = curveShot
+})
+
+MovesTab:CreateButton({
+    Name = "POWER DRIBBLE (R)",
+    Callback = powerDribble
+})
+
+-- Keybinds
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
     
-    -- Hitbox adjustment buttons
-    createTouchButton("+SIZE", UDim2.new(0, 20, 1, -180), function()
-        hitboxSize = math.min(hitboxSize + 0.2, 3)
-        updateHitbox()
-    end)
-    
-    createTouchButton("-SIZE", UDim2.new(0, 20, 1, -240), function()
-        hitboxSize = math.max(hitboxSize - 0.2, 0.5)
-        updateHitbox()
-    end)
-else
-    -- Desktop version
-    for _, move in ipairs(moves) do
-        MovesTab:CreateButton({
-            Name = move.Name,
-            Callback = move.Callback
-        })
+    if input.KeyCode == Enum.KeyCode.Q then
+        directShot()
+    elseif input.KeyCode == Enum.KeyCode.E then
+        curveShot()
+    elseif input.KeyCode == Enum.KeyCode.R then
+        powerDribble()
     end
-    
-    -- Desktop freecam controls
-    local moveKeys = {
-        Forward = Enum.KeyCode.W,
-        Backward = Enum.KeyCode.S,
-        Left = Enum.KeyCode.A,
-        Right = Enum.KeyCode.D,
-        Up = Enum.KeyCode.Space,
-        Down = Enum.KeyCode.LeftShift
-    }
-    
-    UserInputService.InputBegan:Connect(function(input, gameProcessed)
-        if gameProcessed or not freecamEnabled then return end
-        
-        local camera = workspace.CurrentCamera
-        if not camera then return end
-        
-        local moveDirection = Vector3.new(0, 0, 0)
-        
-        if input.KeyCode == moveKeys.Forward then
-            moveDirection = camera.CFrame.LookVector
-        elseif input.KeyCode == moveKeys.Backward then
-            moveDirection = -camera.CFrame.LookVector
-        elseif input.KeyCode == moveKeys.Left then
-            moveDirection = -camera.CFrame.RightVector
-        elseif input.KeyCode == moveKeys.Right then
-            moveDirection = camera.CFrame.RightVector
-        elseif input.KeyCode == moveKeys.Up then
-            moveDirection = Vector3.new(0, 1, 0)
-        elseif input.KeyCode == moveKeys.Down then
-            moveDirection = Vector3.new(0, -1, 0)
-        end
-        
-        if moveDirection.Magnitude > 0 then
-            camera.CFrame = camera.CFrame + (moveDirection * freecamSpeed * 0.1)
-        end
-    end)
-end
+end)
 
--- Character setup
+-- Auto setup
 player.CharacterAdded:Connect(function(newChar)
     character = newChar
     humanoid = character:WaitForChild("Humanoid")
-    findBall()
+    if espEnabled then toggleESP() end -- Refresh ESP
+    ball = findClosestBall()
+    setupBallVisuals()
 end)
 
 -- Initial setup
-findBall()
-
--- Mobile optimizations
-if IS_MOBILE then
-    RunService:SetThrottleFramerateEnabled(true)
-    settings().Rendering.QualityLevel = 5
-end 
+ball = findClosestBall()
+setupBallVisuals()
