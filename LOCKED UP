@@ -1,0 +1,276 @@
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+-- BLUE LOCK RIVALS UI
+local Window = Rayfield:CreateWindow({
+    Name = "BLUE LOCK RIVALS",
+    LoadingTitle = "Loading Soccer System...",
+    LoadingSubtitle = "You take the ball",
+    ConfigurationSaving = {
+        Enabled = true,
+        FolderName = "BlueLockRivals",
+        FileName = "SoccerSettings"
+    },
+    Theme = {
+        Background = Color3.fromRGB(10, 10, 25),
+        Glow = Color3.fromRGB(0, 100, 255),
+        Text = Color3.fromRGB(255, 255, 255),
+        Button = Color3.fromRGB(0, 80, 255),
+    }
+})
+
+-- Services
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+-- Player setup
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+-- Ball system
+local ball = nil
+local ballHighlight = nil
+
+local function findBall()
+    -- Clear previous highlight if exists
+    if ballHighlight then
+        ballHighlight:Destroy()
+        ballHighlight = nil
+    end
+    
+    -- Search for soccer ball in workspace
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if (obj.Name:lower():find("ball") or obj:IsA("BasePart")) and obj.Shape == Enum.PartType.Ball then
+            ball = obj
+            
+            -- Create highlight for the ball
+            ballHighlight = Instance.new("Highlight")
+            ballHighlight.Name = "BallHighlight"
+            ballHighlight.FillColor = Color3.fromRGB(0, 150, 255)
+            ballHighlight.OutlineColor = Color3.fromRGB(0, 200, 255)
+            ballHighlight.Parent = ball
+            
+            return ball
+        end
+    end
+    
+    return nil
+end
+
+-- Main Tab
+local MainTab = Window:CreateTab("HOME", 0)
+MainTab:CreateSection("BLUE LOCK CONTROL PANEL")
+
+MainTab:CreateButton({
+    Name = "RETAIN TO LOBBY (Find Ball)",
+    Callback = function()
+        local foundBall = findBall()
+        if foundBall then
+            Rayfield:Notify({
+                Title = "Ball Found",
+                Content = "Soccer ball has been located and highlighted",
+                Duration = 3,
+                Image = 0,
+                Actions = {
+                    Ignore = {
+                        Name = "OK",
+                        Callback = function() end
+                    },
+                },
+            })
+        else
+            Rayfield:Notify({
+                Title = "Ball Not Found",
+                Content = "Could not locate soccer ball in workspace",
+                Duration = 3,
+                Image = 0,
+                Actions = {
+                    Ignore = {
+                        Name = "OK",
+                        Callback = function() end
+                    },
+                },
+            })
+        end
+    end
+})
+
+-- Moves Tab
+local MovesTab = Window:CreateTab("MOVES", 0)
+MovesTab:CreateSection("SOCCER TECHNIQUES")
+
+-- Move functions
+local function directShot()
+    if not ball then
+        findBall()
+        if not ball then return end
+    end
+    
+    -- Visual effects
+    ball.Material = Enum.Material.Neon
+    ball.Color = Color3.fromRGB(0, 255, 255)
+    
+    local trail = Instance.new("Trail")
+    trail.Color = ColorSequence.new(Color3.fromRGB(0, 200, 255))
+    trail.LightEmission = 1
+    trail.Attachment0 = Instance.new("Attachment", ball)
+    trail.Attachment1 = Instance.new("Attachment", ball)
+    trail.Parent = ball
+    
+    -- Shoot ball
+    if character and character:FindFirstChild("HumanoidRootPart") then
+        ball.Velocity = character.HumanoidRootPart.CFrame.LookVector * 120
+    end
+    
+    delay(5, function()
+        if trail then trail:Destroy() end
+    end)
+end
+
+local function rainbowFlick()
+    if not ball then
+        findBall()
+        if not ball then return end
+    end
+    
+    -- Visual effects
+    ball.Material = Enum.Material.Neon
+    ball.Color = Color3.fromRGB(255, 0, 255)
+    
+    -- Rainbow trail
+    local trail = Instance.new("Trail")
+    trail.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
+        ColorSequenceKeypoint.new(0.2, Color3.fromRGB(255, 165, 0)),
+        ColorSequenceKeypoint.new(0.4, Color3.fromRGB(255, 255, 0)),
+        ColorSequenceKeypoint.new(0.6, Color3.fromRGB(0, 255, 0)),
+        ColorSequenceKeypoint.new(0.8, Color3.fromRGB(0, 0, 255)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(128, 0, 128))
+    })
+    trail.LightEmission = 1
+    trail.Attachment0 = Instance.new("Attachment", ball)
+    trail.Attachment1 = Instance.new("Attachment", ball)
+    trail.Parent = ball
+    
+    -- Shoot with curve
+    if character and character:FindFirstChild("HumanoidRootPart") then
+        local direction = character.HumanoidRootPart.CFrame.LookVector
+        direction = direction + Vector3.new(0, 0.3, 0) -- Add upward curve
+        ball.Velocity = direction * 100
+    end
+    
+    delay(5, function()
+        if trail then trail:Destroy() end
+    end)
+end
+
+local function monsterDribble()
+    if not ball then
+        findBall()
+        if not ball then return end
+    end
+    
+    -- Visual effects
+    ball.Material = Enum.Material.ForceField
+    ball.Color = Color3.fromRGB(255, 0, 100)
+    
+    -- Monster aura
+    local aura = Instance.new("ParticleEmitter")
+    aura.Texture = "rbxassetid://1049219073"
+    aura.Color = ColorSequence.new(Color3.fromRGB(255, 0, 100))
+    aura.LightEmission = 1
+    aura.Size = NumberSequence.new(0.5)
+    aura.Parent = ball
+    
+    -- Spin effect
+    local spin = Instance.new("BodyAngularVelocity")
+    spin.AngularVelocity = Vector3.new(0, 20, 0)
+    spin.MaxTorque = Vector3.new(4000, 4000, 4000)
+    spin.Parent = ball
+    
+    delay(8, function()
+        if aura then aura:Destroy() end
+        if spin then spin:Destroy() end
+    end)
+end
+
+-- Create move buttons
+MovesTab:CreateButton({
+    Name = "DIRECT SHOT (Q)",
+    Callback = directShot
+})
+
+MovesTab:CreateButton({
+    Name = "RAINBOW FLICK (E)",
+    Callback = rainbowFlick
+})
+
+MovesTab:CreateButton({
+    Name = "MONSTER DRIBBLE (R)",
+    Callback = monsterDribble
+})
+
+-- Social Tab
+local SocialTab = Window:CreateTab("SOCIAL", 0)
+SocialTab:CreateSection("BLUE LOCK COMMUNITY")
+
+SocialTab:CreateLabel("Watch >")
+SocialTab:CreateLabel("frok your teammates")
+SocialTab:CreateLabel("#sorashikii #fyp...")
+
+SocialTab:CreateButton({
+    Name = "SHARE MOVES",
+    Callback = function()
+        Rayfield:Notify({
+            Title = "Shared",
+            Content = "Moves shared with your teammates!",
+            Duration = 3,
+            Image = 0,
+            Actions = {
+                Ignore = {
+                    Name = "OK",
+                    Callback = function() end
+                },
+            },
+        })
+    end
+})
+
+SocialTab:CreateButton({
+    Name = "SAVE CONFIG",
+    Callback = function()
+        Rayfield:Notify({
+            Title = "Configuration Saved",
+            Content = "Settings have been saved",
+            Duration = 3,
+            Image = 0,
+            Actions = {
+                Ignore = {
+                    Name = "OK",
+                    Callback = function() end
+                },
+            },
+        })
+    end
+})
+
+-- Keybinds
+local UserInputService = game:GetService("UserInputService")
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    if input.KeyCode == Enum.KeyCode.Q then
+        directShot()
+    elseif input.KeyCode == Enum.KeyCode.E then
+        rainbowFlick()
+    elseif input.KeyCode == Enum.KeyCode.R then
+        monsterDribble()
+    end
+end)
+
+-- Auto-find ball when character respawns
+player.CharacterAdded:Connect(function(newChar)
+    character = newChar
+    humanoid = character:WaitForChild("Humanoid")
+    findBall()
+end)
